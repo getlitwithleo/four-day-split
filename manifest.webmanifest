@@ -1,10 +1,10 @@
 {
-  "name": "Four-Day Split",
-  "short_name": "4-Day Split",
+  "name": "LM Workouts",
+  "short_name": "LM Workouts",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#E6E9E8",
+  "background_color": "#000000",
   "theme_color": "#E6E9E8",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },

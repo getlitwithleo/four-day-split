@@ -1,5 +1,5 @@
-/* Keeps Four-Day Split on the phone so it opens with no internet. Version: 20261008194039 */
-const CACHE = 'four-day-split-20261008194039';
+/* Keeps LM Workouts on the phone so it opens with no internet. Version: 20261008194446 */
+const CACHE = 'four-day-split-20261008194446';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
