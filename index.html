@@ -401,8 +401,15 @@ button:not(:disabled) { cursor: pointer; }
 .conn .conn-h { margin-bottom: 2px; font-size: 15px; font-weight: 700; color: var(--warn); }
 
 /* Progress + your log */
-.log-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; margin-bottom: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); }
-.log-text { flex: 1 1 200px; min-width: 0; }
+.log-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; margin-bottom: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); }
+.log-text { min-width: 0; }
+.log-tip { margin: 0; }
+.paste-box { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.paste-box textarea {
+  width: 100%; min-height: 110px; padding: 10px; border: 1.5px solid var(--line); border-radius: var(--r-ctl);
+  background: var(--bg); color: var(--ink); font-family: var(--f-num); font-size: 16px; resize: vertical;
+}
+.paste-box textarea:focus { outline: none; border-color: var(--acc); }
 .log-count { margin: 2px 0 0; font-size: 15px; font-weight: 600; }
 .log-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .dl-btn {
@@ -949,7 +956,7 @@ function restFor(b) { return (b && b.rest) || S.prefs.rest; }
 
 /* ---------- UI state ---------- */
 const cur = { day: null, s: null, map: {} };
-const ui = { tab: 'workout', expanded: new Set(), grace: new Set(), histOpen: new Set(), confirm: null, kneeEdit: false, rulesOpen: false, hview: 'progress', progOpen: new Set() };
+const ui = { tab: 'workout', expanded: new Set(), grace: new Set(), histOpen: new Set(), confirm: null, kneeEdit: false, rulesOpen: false, hview: 'progress', progOpen: new Set(), pasteOpen: false, copyFallback: '' };
 let T = { mode: 'idle' };
 
 function buildMap() {
@@ -1673,9 +1680,47 @@ function logCard(list) {
       <p class="s-help" data-sync>${syncText()}</p></div>
     <div class="log-btns">
       <button type="button" class="dl-btn" data-csv>${STANDALONE ? 'Save a copy' : 'Download a copy'} (CSV)</button>
+      <button type="button" class="dl-btn" data-copylog>Copy as text</button>
+    </div>
+    <div class="log-btns">
       <label class="dl-btn ghost" for="csv-in">Load a copy</label>
+      <button type="button" class="dl-btn ghost" data-pasteopen>Paste a copy</button>
       <input type="file" id="csv-in" accept=".csv,text/csv,text/plain" hidden>
-    </div></div>`;
+    </div>
+    <p class="s-help log-tip">Moving your log to the other version? Tap <b>Copy as text</b> here, then open the other one and tap <b>Paste a copy</b>.</p>
+    ${ui.pasteOpen ? `<div class="paste-box">
+      <label class="s-label" for="paste-in">Paste your copied log</label>
+      <textarea id="paste-in" rows="5" placeholder="Press and hold here, then tap Paste"></textarea>
+      <div class="log-btns"><button type="button" class="dl-btn" data-pasteload>Load it</button><button type="button" class="dl-btn ghost" data-pasteclose>Cancel</button></div>
+    </div>` : ''}
+    ${ui.copyFallback ? `<div class="paste-box">
+      <label class="s-label" for="copy-out">Your phone didn’t allow automatic copying. Select all of this and copy it:</label>
+      <textarea id="copy-out" rows="5" readonly>${esc(ui.copyFallback)}</textarea>
+    </div>` : ''}
+  </div>`;
+}
+function copyLog() {
+  const text = buildCSV();
+  const ok = () => { ui.copyFallback = ''; toast('Copied your log. Open the other version and tap Paste a copy.'); };
+  const fail = () => { ui.copyFallback = text; renderHistory(); const t = $('#copy-out'); if (t) { t.focus(); t.select(); } };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail);
+    else fail();
+  } catch (e) { fail(); }
+}
+function pasteLoad() {
+  const box = $('#paste-in'), text = box ? box.value.trim() : '';
+  if (!text) { toast('Nothing pasted yet. Press and hold in the box, then tap Paste.'); return; }
+  const res = importCSV(text);
+  if (!res) { toast('That doesn’t look like a copied log. Use Copy as text in the other version first.'); return; }
+  ui.pasteOpen = false;
+  if (!res.added && !res.knee) { renderHistory(); toast('Nothing new in that log. Everything in it is already here.'); return; }
+  const parts = [];
+  if (res.added) parts.push(`${res.added} workout${res.added === 1 ? '' : 's'}`);
+  if (res.knee) parts.push(`${res.knee} knee check${res.knee === 1 ? '' : 's'}`);
+  renderHistory();
+  if (T.mode !== 'prep' && T.mode !== 'hold') renderWorkout();
+  toast(`Loaded ${parts.join(' and ')}.`);
 }
 function csvCell(v) { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function buildCSV() {
@@ -1949,6 +1994,10 @@ viewHistory.addEventListener('click', (e) => {
   const pg = e.target.closest('[data-prog]');
   if (pg) { const id = pg.dataset.prog; if (ui.progOpen.has(id)) ui.progOpen.delete(id); else ui.progOpen.add(id); renderHistory(); return; }
   if (e.target.closest('[data-csv]')) { downloadCSV(); return; }
+  if (e.target.closest('[data-copylog]')) { copyLog(); return; }
+  if (e.target.closest('[data-pasteopen]')) { ui.pasteOpen = true; ui.copyFallback = ''; renderHistory(); const b = $('#paste-in'); if (b) b.focus(); return; }
+  if (e.target.closest('[data-pasteclose]')) { ui.pasteOpen = false; renderHistory(); return; }
+  if (e.target.closest('[data-pasteload]')) { pasteLoad(); return; }
   const h = e.target.closest('[data-hist]');
   if (h) { const id = h.dataset.hist; if (ui.histOpen.has(id)) ui.histOpen.delete(id); else ui.histOpen.add(id); renderHistory(); return; }
   const d = e.target.closest('[data-del]');
