@@ -1,0 +1,14 @@
+{
+  "name": "Four-Day Split",
+  "short_name": "4-Day Split",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E6E9E8",
+  "theme_color": "#E6E9E8",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
